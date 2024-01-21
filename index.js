@@ -24,17 +24,23 @@ async function run() {
     try {
         await client.connect();
 
-        const foodCollection = client.db('bistroBossDB').collection('menu');
+        const foodsCollection = client.db('bistroBossDB').collection('menu');
+        const reviewsCollection = client.db('bistroBossDB').collection('reviews');
 
         app.get('/foods', async (req, res) => {
-            const result = await foodCollection.find().toArray();
+            const result = await foodsCollection.find().toArray();
+            res.send(result);
+        });
+
+        app.get('/reviews', async (req, res) => {
+            const result = await reviewsCollection.find().toArray();
             res.send(result);
         });
 
         app.get('/category/:name', async (req, res) => {
             const { name } = req.params;
             const query = { category: name };
-            const result = await foodCollection.find(query).toArray();
+            const result = await foodsCollection.find(query).toArray();
             res.send(result);
         });
 
