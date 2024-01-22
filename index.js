@@ -28,8 +28,21 @@ async function run() {
         const reviewsCollection = client.db('bistroBossDB').collection('reviews');
 
         app.get('/foods', async (req, res) => {
-            const result = await foodsCollection.find().toArray();
-            res.send(result);
+            let query = {};
+
+            if (req.query.page) {
+                const page = parseInt(req.query.page);
+                const result = await foodsCollection.find().limit(page).toArray();
+                res.send(result);
+            } else {
+                const result = await foodsCollection.find().toArray();
+                res.send(result);
+            }
+        });
+
+        app.get('/total', async (req, res) => {
+            const result = await foodsCollection.estimatedDocumentCount();
+            res.send({ result });
         });
 
         app.get('/reviews', async (req, res) => {
@@ -37,11 +50,18 @@ async function run() {
             res.send(result);
         });
 
-        app.get('/category/:name', async (req, res) => {
-            const { name } = req.params;
+        app.get('/category', async (req, res) => {
+            const name = req.query.name;
+            const limit = parseInt(req.query.limit);
             const query = { category: name };
-            const result = await foodsCollection.find(query).toArray();
-            res.send(result);
+
+            if (limit) {
+                const result = await foodsCollection.find(query).limit(limit).toArray();
+                res.send(result);
+            } else {
+                const result = await foodsCollection.find(query).toArray();
+                res.send(result);
+            }
         });
 
         await client.db('admin').command({ ping: 1 });
