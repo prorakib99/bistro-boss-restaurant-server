@@ -52,16 +52,33 @@ async function run() {
 
         app.get('/category', async (req, res) => {
             const name = req.query.name;
+            const page = parseInt(req.query.page);
             const limit = parseInt(req.query.limit);
             const query = { category: name };
+            console.log(page);
 
-            if (limit) {
+            if (limit & page) {
+                console.log('true');
+                const result = await foodsCollection
+                    .find(query)
+                    .skip((page - 1) * limit)
+                    .limit(limit)
+                    .toArray();
+                res.send(result);
+            } else if (limit) {
                 const result = await foodsCollection.find(query).limit(limit).toArray();
                 res.send(result);
             } else {
                 const result = await foodsCollection.find(query).toArray();
                 res.send(result);
             }
+        });
+
+        app.get('/category/:name', async (req, res) => {
+            const name = req.params.name;
+            const query = { category: name };
+            const result = await foodsCollection.find(query).toArray();
+            res.send({ total: result.length });
         });
 
         await client.db('admin').command({ ping: 1 });
