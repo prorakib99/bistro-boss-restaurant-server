@@ -22,31 +22,32 @@ const client = new MongoClient(uri, {
 
 async function run() {
     try {
-        await client.connect();
+        client.connect();
 
-        const foodsCollection = client.db('bistroBossDB').collection('menu');
-        const reviewsCollection = client.db('bistroBossDB').collection('reviews');
+        const foodCollection = client.db('bistroBossDB').collection('menu');
+        const reviewCollection = client.db('bistroBossDB').collection('reviews');
+        const cartCollection = client.db('bistroBossDB').collection('carts');
 
         app.get('/foods', async (req, res) => {
             let query = {};
 
             if (req.query.page) {
                 const page = parseInt(req.query.page);
-                const result = await foodsCollection.find().limit(page).toArray();
+                const result = await foodCollection.find().limit(page).toArray();
                 res.send(result);
             } else {
-                const result = await foodsCollection.find().toArray();
+                const result = await foodCollection.find().toArray();
                 res.send(result);
             }
         });
 
         app.get('/total', async (req, res) => {
-            const result = await foodsCollection.estimatedDocumentCount();
+            const result = await foodCollection.estimatedDocumentCount();
             res.send({ result });
         });
 
         app.get('/reviews', async (req, res) => {
-            const result = await reviewsCollection.find().toArray();
+            const result = await reviewCollection.find().toArray();
             res.send(result);
         });
 
@@ -59,17 +60,17 @@ async function run() {
 
             if (limit & page) {
                 console.log('true');
-                const result = await foodsCollection
+                const result = await foodCollection
                     .find(query)
                     .skip((page - 1) * limit)
                     .limit(limit)
                     .toArray();
                 res.send(result);
             } else if (limit) {
-                const result = await foodsCollection.find(query).limit(limit).toArray();
+                const result = await foodCollection.find(query).limit(limit).toArray();
                 res.send(result);
             } else {
-                const result = await foodsCollection.find(query).toArray();
+                const result = await foodCollection.find(query).toArray();
                 res.send(result);
             }
         });
@@ -77,8 +78,22 @@ async function run() {
         app.get('/category/:name', async (req, res) => {
             const name = req.params.name;
             const query = { category: name };
-            const result = await foodsCollection.find(query).toArray();
+            const result = await foodCollection.find(query).toArray();
             res.send({ total: result.length });
+        });
+
+        // Cart Items API
+        app.get('/carts', async (req, res) => {
+            const email = req.query.email;
+            const query = { email: email };
+            const result = await cartCollection.find(query).toArray();
+            res.send(result);
+        });
+
+        app.post('/carts', async (req, res) => {
+            const cartItem = req.body;
+            const result = await cartCollection.insertOne(cartItem);
+            res.send(result);
         });
 
         await client.db('admin').command({ ping: 1 });
