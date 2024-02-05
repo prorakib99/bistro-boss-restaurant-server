@@ -55,6 +55,20 @@ async function run() {
             res.send({ token });
         });
 
+        // Admin Related APIs
+        app.get('/users/admin/:email', verifyJWT, async (req, res) => {
+            const email = req.params.email;
+
+            if (req.decoded.email !== email) {
+                return res.send({ admin: false });
+            }
+
+            const query = { email: email };
+            const user = await usersCollection.findOne(query);
+            const result = { admin: user?.role === 'admin' };
+            res.send(result);
+        });
+
         // User Related APIs
         app.get('/users', async (req, res) => {
             const result = await usersCollection.find().toArray();
