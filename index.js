@@ -43,7 +43,7 @@ async function run() {
     try {
         client.connect();
 
-        const foodCollection = client.db('bistroBossDB').collection('menu');
+        const menuCollection = client.db('bistroBossDB').collection('menu');
         const usersCollection = client.db('bistroBossDB').collection('users');
         const reviewCollection = client.db('bistroBossDB').collection('reviews');
         const cartCollection = client.db('bistroBossDB').collection('carts');
@@ -122,16 +122,22 @@ async function run() {
 
             if (req.query.page) {
                 const page = parseInt(req.query.page);
-                const result = await foodCollection.find().limit(page).toArray();
+                const result = await menuCollection.find().limit(page).toArray();
                 res.send(result);
             } else {
-                const result = await foodCollection.find().toArray();
+                const result = await menuCollection.find().toArray();
                 res.send(result);
             }
         });
 
+        app.post('/foods', verifyJWT, verifyAdmin, async (req, res) => {
+            const newFood = req.body;
+            const result = await menuCollection.insertOne(newFood);
+            res.send(result);
+        });
+
         app.get('/total', async (req, res) => {
-            const result = await foodCollection.estimatedDocumentCount();
+            const result = await menuCollection.estimatedDocumentCount();
             res.send({ result });
         });
 
@@ -147,17 +153,17 @@ async function run() {
             const query = { category: name };
 
             if (limit & page) {
-                const result = await foodCollection
+                const result = await menuCollection
                     .find(query)
                     .skip((page - 1) * limit)
                     .limit(limit)
                     .toArray();
                 res.send(result);
             } else if (limit) {
-                const result = await foodCollection.find(query).limit(limit).toArray();
+                const result = await menuCollection.find(query).limit(limit).toArray();
                 res.send(result);
             } else {
-                const result = await foodCollection.find(query).toArray();
+                const result = await menuCollection.find(query).toArray();
                 res.send(result);
             }
         });
@@ -165,7 +171,7 @@ async function run() {
         app.get('/category/:name', async (req, res) => {
             const name = req.params.name;
             const query = { category: name };
-            const result = await foodCollection.find(query).toArray();
+            const result = await menuCollection.find(query).toArray();
             res.send({ total: result.length });
         });
 
