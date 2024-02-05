@@ -12,7 +12,6 @@ app.use(express.json());
 
 const verifyJWT = (req, res, next) => {
     const authorization = req.headers.authorization;
-    console.log(authorization);
     if (!authorization) {
         return res.status(401).send({ error: 'unauthorized access' });
     }
@@ -130,9 +129,40 @@ async function run() {
             }
         });
 
+        app.get('/foods/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await menuCollection.findOne(query);
+            res.send(result);
+        });
+
         app.post('/foods', verifyJWT, verifyAdmin, async (req, res) => {
             const newFood = req.body;
             const result = await menuCollection.insertOne(newFood);
+            res.send(result);
+        });
+
+        app.put('/updateFoods/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const { name, category, price, recipe } = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    name,
+                    category,
+                    price: parseFloat(price),
+                    recipe
+                }
+            };
+            const result = await menuCollection.updateOne(filter, updateDoc, options);
+            res.send(result);
+        });
+
+        app.delete('/foods/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await menuCollection.deleteOne(query);
             res.send(result);
         });
 
@@ -184,7 +214,6 @@ async function run() {
             }
 
             const decodedEmail = req.decoded.email;
-            console.log(decodedEmail, email);
             if (email !== decodedEmail) {
                 return res.status(403).send({ error: true, message: 'forbidden access' });
             }
