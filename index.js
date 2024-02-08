@@ -1,31 +1,15 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const stripe = require('stripe')(process.env.PAYMENT_GATEWAY_TOKEN);
+const jwt = require('jsonwebtoken');
 const app = express();
 const port = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
-
-const verifyJWT = (req, res, next) => {
-    const authorization = req.headers.authorization;
-    if (!authorization) {
-        return res.status(401).send({ error: 'unauthorized access' });
-    }
-
-    const token = authorization.split(' ')[1];
-
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).send({ error: true, message: 'unauthorized access' });
-        }
-        req.decoded = decoded;
-        next();
-    });
-};
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.fyh6bpe.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -42,10 +26,12 @@ async function run() {
     try {
         client.connect();
 
-        const menuCollection = client.db('bistroBossDB').collection('menu');
-        const usersCollection = client.db('bistroBossDB').collection('users');
-        const reviewCollection = client.db('bistroBossDB').collection('reviews');
-        const cartCollection = client.db('bistroBossDB').collection('carts');
+        const databaseName = client.db('bistroBossDB');
+        const menuCollection = databaseName.collection('menu');
+        const usersCollection = databaseName.collection('users');
+        const reviewCollection = databaseName.collection('reviews');
+        const cartCollection = databaseName.collection('carts');
+        const paymentCollection = databaseName.collection('payments');
 
         // JWT APIs
         app.post('/jwt', (req, res) => {
@@ -53,6 +39,24 @@ async function run() {
             const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1h' });
             res.send({ token });
         });
+
+        // Verify User Token
+        const verifyJWT = (req, res, next) => {
+            const authorization = req.headers.authorization;
+            if (!authorization) {
+                return res.status(401).send({ error: 'unauthorized access' });
+            }
+
+            const token = authorization.split(' ')[1];
+
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(401).send({ error: true, message: 'unauthorized access' });
+                }
+                req.decoded = decoded;
+                next();
+            });
+        };
 
         // VerifyAdmin
         const verifyAdmin = async (req, res, next) => {
@@ -234,6 +238,35 @@ async function run() {
             const query = { _id: new ObjectId(id) };
             const result = await cartCollection.deleteOne(query);
             res.send(result);
+        });
+
+        // Payments Related APIs
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = parseInt(price * 100);
+
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: 'usd',
+                payment_method_types: ['card']
+            });
+
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            });
+        });
+
+        app.post('/payments', verifyJWT, async (req, res) => {
+            const payment = req.body;
+            const insertResult = await paymentCollection.insertOne(payment);
+
+            // Delete Carts
+            const query = {
+                _id: { $in: payment.cartItems.map((id) => new ObjectId(id)) }
+            };
+            const deleteResult = await cartCollection.deleteMany(query);
+
+            res.send({ insertResult, deleteResult });
         });
 
         await client.db('admin').command({ ping: 1 });
