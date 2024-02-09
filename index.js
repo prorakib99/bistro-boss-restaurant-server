@@ -32,6 +32,7 @@ async function run() {
         const reviewCollection = databaseName.collection('reviews');
         const cartCollection = databaseName.collection('carts');
         const paymentCollection = databaseName.collection('payments');
+        const bookingsCollection = databaseName.collection('bookings');
 
         // JWT APIs
         app.post('/jwt', (req, res) => {
@@ -189,6 +190,13 @@ async function run() {
             res.send(result);
         });
 
+        // User Booking API
+        app.post('/bookings', async (req, res) => {
+            const newBooking = req.body;
+            const result = await bookingsCollection.insertOne(newBooking);
+            res.send(result);
+        });
+
         // Menu Related APIs
         app.get('/foods', async (req, res) => {
             let query = {};
@@ -315,7 +323,6 @@ async function run() {
             const { email } = req.query;
             const query = { email: email };
             const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
-            console.log(result);
             res.send(result);
         });
 
