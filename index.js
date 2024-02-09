@@ -311,6 +311,14 @@ async function run() {
         });
 
         // Payments Related APIs
+        app.get('/payments', verifyJWT, async (req, res) => {
+            const { email } = req.query;
+            const query = { email: email };
+            const result = await paymentCollection.find(query).sort({ date: -1 }).toArray();
+            console.log(result);
+            res.send(result);
+        });
+
         app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
