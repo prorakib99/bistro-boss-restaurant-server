@@ -191,9 +191,23 @@ async function run() {
         });
 
         // User Booking API
-        app.post('/bookings', async (req, res) => {
+        app.get('/user-bookings', verifyJWT, async (req, res) => {
+            const { email } = req.query;
+            const query = { email: email };
+            const result = await bookingsCollection.find(query).sort({ submitAt: -1 }).toArray();
+            res.send(result);
+        });
+
+        app.post('/bookings', verifyJWT, async (req, res) => {
             const newBooking = req.body;
             const result = await bookingsCollection.insertOne(newBooking);
+            res.send(result);
+        });
+
+        app.delete('/user-bookings/:id', verifyJWT, async (req, res) => {
+            const { id } = req.params;
+            const query = { _id: new ObjectId(id) };
+            const result = await bookingsCollection.deleteOne(query);
             res.send(result);
         });
 
