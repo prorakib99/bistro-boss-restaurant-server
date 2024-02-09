@@ -83,6 +83,76 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/admin-stats', verifyJWT, verifyAdmin, async (req, res) => {
+            const revenue = (await paymentCollection.find().toArray()).reduce(
+                (sum, item) => sum + item.price,
+                0
+            );
+            const users = (await usersCollection.find().toArray()).filter(
+                (user) => user.role !== 'admin'
+            ).length;
+            const products = await menuCollection.estimatedDocumentCount();
+            const orders = await paymentCollection.estimatedDocumentCount();
+
+            res.send({ revenue, users, products, orders });
+        });
+
+        app.get('/order-stats', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await paymentCollection
+                .aggregate([
+                    {
+                        $unwind: '$menuItems'
+                    },
+                    {
+                        $lookup: {
+                            from: 'menu',
+                            let: { menuItemId: { $toObjectId: '$menuItems' } },
+                            pipeline: [
+                                {
+                                    $match: {
+                                        $expr: {
+                                            $eq: ['$_id', '$$menuItemId']
+                                        }
+                                    }
+                                }
+                            ],
+                            as: 'menuItemsData'
+                        }
+                    },
+                    {
+                        $unwind: '$menuItemsData'
+                    },
+                    {
+                        $group: {
+                            _id: '$menuItemsData.category',
+                            quantity: { $sum: 1 },
+                            revenue: { $sum: '$menuItemsData.price' }
+                        }
+                    },
+                    {
+                        $project: {
+                            _id: 0,
+                            category: {
+                                $concat: [
+                                    { $toUpper: { $substrCP: ['$_id', 0, 1] } },
+                                    {
+                                        $substrCP: [
+                                            '$_id',
+                                            1,
+                                            { $subtract: [{ $strLenCP: '$_id' }, 1] }
+                                        ]
+                                    }
+                                ]
+                            },
+                            quantity: '$quantity',
+                            total: '$revenue'
+                        }
+                    }
+                ])
+                .toArray();
+            res.send(result);
+        });
+
         // User Related APIs
         app.get('/users', verifyJWT, verifyAdmin, async (req, res) => {
             const result = await usersCollection.find().toArray();
@@ -241,7 +311,7 @@ async function run() {
         });
 
         // Payments Related APIs
-        app.post('/create-payment-intent', async (req, res) => {
+        app.post('/create-payment-intent', verifyJWT, async (req, res) => {
             const { price } = req.body;
             const amount = parseInt(price * 100);
 
