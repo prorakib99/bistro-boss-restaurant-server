@@ -160,6 +160,25 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/user-stats', verifyJWT, async (req, res) => {
+            const { email } = req.query;
+            const query = { email: email };
+            const purchased = (await paymentCollection.find(query).toArray()).reduce(
+                (sum, current) => sum + current.price,
+                0
+            );
+            const payments = (await paymentCollection.find(query).toArray()).length;
+            const reviews = (await reviewCollection.find(query).toArray()).length;
+            const bookings = (await bookingsCollection.find(query).toArray()).length;
+
+            res.send({
+                purchased,
+                payments,
+                reviews,
+                bookings
+            });
+        });
+
         app.patch('/users/admin/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) };
