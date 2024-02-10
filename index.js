@@ -198,6 +198,24 @@ async function run() {
             res.send(result);
         });
 
+        app.get('/bookings', verifyJWT, verifyAdmin, async (req, res) => {
+            const result = await bookingsCollection.find().sort({ submitAt: -1 }).toArray();
+            res.send(result);
+        });
+
+        app.patch('/bookings/:id', verifyJWT, verifyAdmin, async (req, res) => {
+            const { id } = req.params;
+            const query = { _id: new ObjectId(id) };
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    bookingStatus: 'done'
+                }
+            };
+            const result = await bookingsCollection.updateOne(query, updateDoc, options);
+            res.send(result);
+        });
+
         app.post('/bookings', verifyJWT, async (req, res) => {
             const newBooking = req.body;
             const result = await bookingsCollection.insertOne(newBooking);
