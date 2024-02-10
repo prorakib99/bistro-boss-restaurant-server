@@ -285,8 +285,15 @@ async function run() {
             res.send({ result });
         });
 
+        // Reviews Related APIs
         app.get('/reviews', async (req, res) => {
-            const result = await reviewCollection.find().toArray();
+            const result = await reviewCollection.find().sort({ createAt: -1 }).toArray();
+            res.send(result);
+        });
+
+        app.post('/user-review', verifyJWT, async (req, res) => {
+            const newReview = req.body;
+            const result = await reviewCollection.insertOne(newReview);
             res.send(result);
         });
 
